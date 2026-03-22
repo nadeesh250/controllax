@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controllax — Control Your PC From Your Phone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #06060a;
+    --bg2:      #0d0d14;
+    --card:     #111119;
+    --border:   #1a1a2e;
+    --accent:   #7c3aed;
+    --accentL:  #a78bfa;
+    --accentLL: #c4b5fd;
+    --cyan:     #06b6d4;
+    --cyanL:    #67e8f9;
+    --green:    #22c55e;
+    --amber:    #f59e0b;
+    --text:     #f1f5f9;
+    --sub:      #64748b;
+    --sub2:     #94a3b8;
+    --glow:     rgba(124,58,237,0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* ── Custom cursor ───────────────────────────────────────── */
+  #cursor {
+    width: 10px; height: 10px;
+    background: var(--accentL);
+    border-radius: 50%;
+    position: fixed; top: 0; left: 0;
+    pointer-events: none; z-index: 9999;
+    mix-blend-mode: screen;
+    transition: transform 0.1s ease, opacity 0.2s;
+  }
+  #cursor-ring {
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--accentL);
+    border-radius: 50%;
+    position: fixed; top: 0; left: 0;
+    pointer-events: none; z-index: 9998;
+    opacity: 0.4;
+    transition: transform 0.18s ease, width 0.2s, height 0.2s, opacity 0.2s;
+  }
+  body:hover #cursor { opacity: 1; }
+
+  /* ── Noise overlay ───────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.6;
+  }
+
+  /* ── Grid background ─────────────────────────────────────── */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(124,58,237,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Layout ──────────────────────────────────────────────── */
+  section, nav, footer { position: relative; z-index: 1; }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  /* ── Nav ─────────────────────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex; align-items: center;
+    padding: 0 40px;
+    height: 64px;
+    background: rgba(6,6,10,0.7);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 15px; font-weight: 700;
+    color: var(--accentL);
+    letter-spacing: 0.06em;
+    text-decoration: none;
+  }
+  .nav-logo-dot {
+    width: 8px; height: 8px;
+    background: var(--accentL);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accentL);
+    animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  .nav-links {
+    margin-left: auto;
+    display: flex; gap: 36px; align-items: center;
+    list-style: none;
+  }
+  .nav-links a {
+    color: var(--sub2); text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    letter-spacing: 0.04em;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  /* ── Hero ─────────────────────────────────────────────────── */
+  #hero {
+    min-height: 100vh;
+    display: flex; align-items: center;
+    padding: 100px 0 60px;
+    overflow: hidden;
+  }
+
+  .hero-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    color: var(--accentL);
+    background: rgba(124,58,237,0.1);
+    border: 1px solid rgba(124,58,237,0.25);
+    border-radius: 20px;
+    padding: 5px 12px;
+    margin-bottom: 24px;
+    animation: fadein 0.6s ease both;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--accentL);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--accentL);
+  }
+
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(42px, 5.5vw, 72px);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    animation: fadein 0.7s 0.1s ease both;
+  }
+
+  .hero-title .word-ctrl {
+    background: linear-gradient(135deg, var(--accentLL) 0%, var(--cyan) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    margin-top: 20px;
+    font-size: 17px;
+    color: var(--sub2);
+    line-height: 1.7;
+    max-width: 420px;
+    font-weight: 300;
+    animation: fadein 0.7s 0.2s ease both;
+  }
+
+  .hero-badges {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    margin-top: 28px;
+    animation: fadein 0.7s 0.3s ease both;
+  }
+  .badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600;
+    font-family: 'Space Mono', monospace;
+    color: var(--sub2);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    letter-spacing: 0.06em;
+  }
+  .badge svg { width: 12px; height: 12px; }
+
+  .hero-cta {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    margin-top: 36px;
+    animation: fadein 0.7s 0.4s ease both;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 14px 24px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.07);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .btn:hover::after { opacity: 1; }
+  .btn:active { transform: scale(0.97) !important; }
+
+  .btn-apk {
+    background: linear-gradient(135deg, #6d28d9 0%, var(--accent) 50%, #0ea5e9 100%);
+    color: #fff;
+    box-shadow: 0 6px 28px rgba(124,58,237,0.4);
+  }
+  .btn-apk:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 36px rgba(124,58,237,0.55);
+  }
+
+  .btn-exe {
+    background: var(--card);
+    color: var(--cyanL);
+    border: 1px solid rgba(6,182,212,0.3);
+    box-shadow: 0 4px 20px rgba(6,182,212,0.1);
+  }
+  .btn-exe:hover {
+    transform: translateY(-2px);
+    border-color: rgba(6,182,212,0.6);
+    box-shadow: 0 8px 28px rgba(6,182,212,0.22);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--sub2);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover {
+    color: var(--text);
+    border-color: var(--sub);
+    transform: translateY(-1px);
+  }
+
+  /* ── Hero visual ─────────────────────────────────────────── */
+  .hero-visual {
+    position: relative;
+    animation: fadein 0.8s 0.2s ease both;
+  }
+
+  .phone-frame {
+    width: 100%;
+    max-width: 280px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+  }
+
+  .phone-shell {
+    background: #0a0a12;
+    border: 1.5px solid #1e1e35;
+    border-radius: 36px;
+    padding: 18px 14px;
+    box-shadow:
+      0 0 0 6px rgba(124,58,237,0.06),
+      0 30px 80px rgba(0,0,0,0.7),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .phone-notch {
+    width: 80px; height: 22px;
+    background: #0a0a12;
+    border-radius: 0 0 14px 14px;
+    margin: 0 auto 14px;
+    border: 1.5px solid #1a1a2e;
+    border-top: none;
+  }
+
+  .phone-screen {
+    background: #06060a;
+    border-radius: 24px;
+    padding: 12px;
+    min-height: 420px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Simulated app UI */
+  .sim-header {
+    background: #0e0e16;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #1a1a2e;
+  }
+  .sim-dot { width: 6px; height: 6px; background: #a78bfa; border-radius: 50%;
+    box-shadow: 0 0 8px #a78bfa; animation: pulse-dot 1.4s infinite; }
+  .sim-title { font-family: 'Space Mono', monospace; font-size: 9px;
+    color: #a78bfa; letter-spacing: 0.15em; font-weight: 700; }
+  .sim-live { margin-left: auto; font-size: 8px; color: #22c55e;
+    background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 8px; padding: 2px 7px; font-weight: 700; letter-spacing: 0.1em; }
+
+  .sim-session {
+    background: #111119;
+    border: 1px solid #1a1a2e;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sim-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, #6d28d9, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(124,58,237,0.4);
+  }
+  .sim-ip { font-family: 'Space Mono', monospace; font-size: 10px; color: #f1f5f9; }
+  .sim-session-sub { font-size: 9px; color: #64748b; margin-top: 2px; }
+  .sim-count { margin-left: auto; font-size: 20px; font-weight: 800;
+    color: #06b6d4; font-family: 'Space Mono', monospace; }
+
+  .sim-label { font-size: 8px; font-weight: 700; color: #a78bfa;
+    letter-spacing: 0.15em; margin: 8px 0 5px; display: flex; align-items: center; gap: 5px; }
+  .sim-label::before { content: ''; width: 2px; height: 10px;
+    background: #a78bfa; border-radius: 1px; }
+
+  .sim-card {
+    background: #111119; border: 1px solid #1a1a2e;
+    border-radius: 10px; padding: 10px 12px;
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 6px;
+  }
+  .sim-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .sim-card-title { font-size: 11px; font-weight: 600; color: #f1f5f9; }
+  .sim-card-sub { font-size: 9px; color: #64748b; margin-top: 2px; }
+  .sim-arrow { margin-left: auto; color: #64748b; font-size: 10px; }
+
+  /* Glow orbs behind phone */
+  .hero-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    pointer-events: none;
+  }
+  .glow-1 {
+    width: 300px; height: 300px;
+    background: rgba(124,58,237,0.25);
+    top: -60px; right: -40px;
+    animation: float 6s ease-in-out infinite;
+  }
+  .glow-2 {
+    width: 200px; height: 200px;
+    background: rgba(6,182,212,0.15);
+    bottom: -40px; left: 20px;
+    animation: float 8s 2s ease-in-out infinite reverse;
+  }
+
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-18px); }
+  }
+
+  /* ── Section styles ──────────────────────────────────────── */
+  .section-label {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    color: var(--sub);
+    margin-bottom: 16px;
+  }
+  .section-label::before {
+    content: '';
+    width: 20px; height: 1px;
+    background: var(--sub);
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 3.5vw, 44px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 14px;
+  }
+
+  .section-sub {
+    color: var(--sub2);
+    font-size: 16px;
+    line-height: 1.7;
+    font-weight: 300;
+    max-width: 520px;
+  }
+
+  /* ── Features ─────────────────────────────────────────────── */
+  #features { padding: 100px 0; }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 56px;
+  }
+
+  .feature-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--card-accent, #7c3aed), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .feature-card:hover {
+    border-color: rgba(124,58,237,0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(124,58,237,0.12);
+  }
+  .feature-card:hover::before { opacity: 1; }
+
+  .feature-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin-bottom: 18px;
+  }
+
+  .feature-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px; font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .feature-desc {
+    font-size: 13px;
+    color: var(--sub2);
+    line-height: 1.65;
+    font-weight: 300;
+  }
+
+  /* ── Download section ────────────────────────────────────── */
+  #download { padding: 100px 0; }
+
+  .download-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 56px;
+  }
+
+  .download-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .download-card:hover {
+    transform: translateY(-4px);
+  }
+
+  .download-card.apk {
+    border-color: rgba(124,58,237,0.25);
+    box-shadow: 0 0 0 1px rgba(124,58,237,0.08) inset;
+  }
+  .download-card.apk::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .download-card.apk:hover {
+    box-shadow: 0 16px 48px rgba(124,58,237,0.2);
+  }
+
+  .download-card.exe {
+    border-color: rgba(6,182,212,0.2);
+    box-shadow: 0 0 0 1px rgba(6,182,212,0.06) inset;
+  }
+  .download-card.exe::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .download-card.exe:hover {
+    box-shadow: 0 16px 48px rgba(6,182,212,0.15);
+  }
+
+  .dl-platform {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 20px;
+  }
+  .dl-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    flex-shrink: 0;
+  }
+  .apk .dl-icon { background: rgba(124,58,237,0.12); border: 1px solid rgba(124,58,237,0.25); }
+  .exe .dl-icon { background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.2); }
+
+  .dl-platform-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px; font-weight: 800;
+  }
+  .apk .dl-platform-name { color: var(--accentL); }
+  .exe .dl-platform-name { color: var(--cyanL); }
+
+  .dl-platform-sub {
+    font-size: 12px; color: var(--sub); margin-top: 2px;
+  }
+
+  .dl-specs {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 28px;
+  }
+  .dl-spec {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--sub2);
+  }
+  .dl-spec::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .apk .dl-spec::before { background: var(--accentL); }
+  .exe .dl-spec::before { background: var(--cyanL); }
+
+  .dl-btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%;
+    padding: 15px;
+    border-radius: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.1em;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+    cursor: pointer;
+    border: none;
+  }
+  .apk .dl-btn {
+    background: linear-gradient(135deg, #6d28d9, var(--accent), #0ea5e9);
+    color: #fff;
+    box-shadow: 0 6px 24px rgba(124,58,237,0.4);
+  }
+  .apk .dl-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 32px rgba(124,58,237,0.55);
+  }
+  .exe .dl-btn {
+    background: rgba(6,182,212,0.1);
+    color: var(--cyanL);
+    border: 1px solid rgba(6,182,212,0.35);
+    box-shadow: 0 4px 20px rgba(6,182,212,0.1);
+  }
+  .exe .dl-btn:hover {
+    transform: translateY(-2px);
+    background: rgba(6,182,212,0.15);
+    box-shadow: 0 8px 28px rgba(6,182,212,0.2);
+  }
+
+  .dl-version {
+    text-align: center;
+    font-size: 11px; font-family: 'Space Mono', monospace;
+    color: var(--sub);
+    margin-top: 12px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── How it works ────────────────────────────────────────── */
+  #how { padding: 100px 0; }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-top: 56px;
+    position: relative;
+  }
+  .steps::before {
+    content: '';
+    position: absolute;
+    top: 28px; left: calc(12.5% + 20px); right: calc(12.5% + 20px);
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent), var(--cyan));
+    opacity: 0.3;
+  }
+
+  .step {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    padding: 0 16px;
+  }
+
+  .step-num {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 18px; font-weight: 700;
+    margin-bottom: 20px;
+    position: relative; z-index: 1;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .step:nth-child(1) .step-num { color: var(--accentL); border-color: rgba(124,58,237,0.3); }
+  .step:nth-child(2) .step-num { color: var(--cyan);    border-color: rgba(6,182,212,0.3); }
+  .step:nth-child(3) .step-num { color: var(--green);   border-color: rgba(34,197,94,0.3); }
+  .step:nth-child(4) .step-num { color: var(--amber);   border-color: rgba(245,158,11,0.3); }
+
+  .step-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .step-desc { font-size: 12px; color: var(--sub2); line-height: 1.6; }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 0;
+  }
+
+  .footer-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 20px;
+  }
+
+  .footer-brand {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px; font-weight: 700;
+    color: var(--accentL);
+    letter-spacing: 0.08em;
+  }
+
+  .footer-credit {
+    font-size: 12px; color: var(--sub);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .footer-credit span { color: var(--accentL); font-weight: 600; }
+
+  .footer-links {
+    display: flex; gap: 24px; list-style: none;
+  }
+  .footer-links a {
+    color: var(--sub); font-size: 12px; text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--text); }
+
+  /* ── Scroll reveal ───────────────────────────────────────── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @keyframes fadein {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .hero-visual { order: -1; max-width: 260px; margin: 0 auto; }
+    .features-grid { grid-template-columns: 1fr 1fr; }
+    .download-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr 1fr; gap: 28px; }
+    .steps::before { display: none; }
+    nav { padding: 0 20px; }
+    .nav-links { gap: 20px; }
+  }
+  @media (max-width: 560px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- ── NAV ─────────────────────────────────────────────────── -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-dot"></div>
+    CONTROLLAX
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#download">Download</a></li>
+  </ul>
+</nav>
+
+<!-- ── HERO ────────────────────────────────────────────────── -->
+<section id="hero">
+  <div class="container">
+    <div class="hero-inner">
+      <!-- Left -->
+      <div>
+        <div class="hero-eyebrow">FREE &nbsp;·&nbsp; LOCAL NETWORK &nbsp;·&nbsp; NO INTERNET NEEDED</div>
+        <h1 class="hero-title">
+          <span class="word-ctrl">Control</span><br>
+          Your PC<br>
+          From Your Phone
+        </h1>
+        <p class="hero-sub">
+          Controllax turns your Android into a full remote control for your Windows PC — mouse, keyboard, media, files, and more.
+        </p>
+
+        <div class="hero-badges">
+          <div class="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            No internet required
+          </div>
+          <div class="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Low latency
+          </div>
+          <div class="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Windows 10/11
+          </div>
+        </div>
+
+        <div class="hero-cta">
+          <a href="#download" class="btn btn-apk">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12l4 4 4-4"/><path d="M12 8v8"/></svg>
+            Download APK
+          </a>
+          <a href="#download" class="btn btn-exe">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Download for PC
+          </a>
+        </div>
+      </div>
+
+      <!-- Right — phone mockup -->
+      <div class="hero-visual">
+        <div class="hero-glow glow-1"></div>
+        <div class="hero-glow glow-2"></div>
+        <div class="phone-frame">
+          <div class="phone-shell">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <!-- Simulated app UI -->
+              <div class="sim-header">
+                <div class="sim-dot"></div>
+                <div class="sim-title">CONTROLLAX</div>
+                <div class="sim-live">LIVE</div>
+              </div>
+              <div class="sim-session">
+                <div class="sim-avatar">💻</div>
+                <div>
+                  <div class="sim-ip">192.168.1.5</div>
+                  <div class="sim-session-sub">Session 00:04:32</div>
+                </div>
+                <div class="sim-count">47</div>
+              </div>
+              <div class="sim-label">MODULES</div>
+              <div class="sim-card">
+                <div class="sim-icon" style="background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.25)">🚀</div>
+                <div>
+                  <div class="sim-card-title">App Launcher</div>
+                  <div class="sim-card-sub">Launch apps, browser, media</div>
+                </div>
+                <div class="sim-arrow">›</div>
+              </div>
+              <div class="sim-card">
+                <div class="sim-icon" style="background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.25)">🎮</div>
+                <div>
+                  <div class="sim-card-title">Mouse & Keyboard</div>
+                  <div class="sim-card-sub">Touchpad, typing, shortcuts</div>
+                </div>
+                <div class="sim-arrow">›</div>
+              </div>
+              <div class="sim-card" style="opacity:0.45">
+                <div class="sim-icon" style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12)">📁</div>
+                <div>
+                  <div class="sim-card-title" style="color:#64748b">File Sharing <span style="font-size:8px;background:rgba(100,116,139,0.12);border:1px solid rgba(100,116,139,0.2);border-radius:4px;padding:1px 5px;margin-left:4px;color:#64748b">Soon</span></div>
+                  <div class="sim-card-sub">Send &amp; receive files with PC</div>
+                </div>
+                <div class="sim-arrow" style="color:#1e1e30">🔒</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ─────────────────────────────────────────────── -->
+<section id="features">
+  <div class="container">
+    <div class="section-label reveal">FEATURES</div>
+    <h2 class="section-title reveal">Everything you need<br>to control your PC</h2>
+    <p class="section-sub reveal">Full-featured remote control over your local Wi-Fi. No accounts, no cloud, no latency.</p>
+
+    <div class="features-grid">
+
+      <div class="feature-card reveal" style="--card-accent:#a78bfa; animation-delay:0.05s">
+        <div class="feature-icon" style="background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2)">🖱️</div>
+        <div class="feature-title">Touchpad & Mouse</div>
+        <p class="feature-desc">Use your phone screen as a precision touchpad. 2-finger scroll, tap click, long-press right-click. Adjustable sensitivity and FPS cap up to 144Hz.</p>
+      </div>
+
+      <div class="feature-card reveal" style="--card-accent:#67e8f9; animation-delay:0.1s">
+        <div class="feature-icon" style="background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.2)">⌨️</div>
+        <div class="feature-title">Full Keyboard</div>
+        <p class="feature-desc">Complete on-screen keyboard with modifier keys (Ctrl, Alt, Shift, Win), function keys F1–F12, and all special keys. Landscape mode shows keyboard + touchpad together.</p>
+      </div>
+
+      <div class="feature-card reveal" style="--card-accent:#4ade80; animation-delay:0.15s">
+        <div class="feature-icon" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2)">🎵</div>
+        <div class="feature-title">Media & Volume</div>
+        <p class="feature-desc">Control playback, skip tracks, adjust volume with a real slider. Media keys work with Spotify, YouTube, VLC — anything playing on your PC.</p>
+      </div>
+
+      <div class="feature-card reveal" style="--card-accent:#fbbf24; animation-delay:0.2s">
+        <div class="feature-icon" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2)">⚡</div>
+        <div class="feature-title">Quick Actions</div>
+        <p class="feature-desc">12 instant action buttons — Screenshot, Task Manager, Lock Screen, Show Desktop, Run Dialog, Clipboard Paste, Window Snap, and more.</p>
+      </div>
+
+      <div class="feature-card reveal" style="--card-accent:#f87171; animation-delay:0.25s">
+        <div class="feature-icon" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2)">🔴</div>
+        <div class="feature-title">Macro Recorder</div>
+        <p class="feature-desc">Record a sequence of commands and replay them with one tap. Perfect for repetitive tasks or custom workflows. Save and run macros on demand.</p>
+      </div>
+
+      <div class="feature-card reveal" style="--card-accent:#c084fc; animation-delay:0.3s">
+        <div class="feature-icon" style="background:rgba(192,132,252,0.1);border:1px solid rgba(192,132,252,0.2)">📡</div>
+        <div class="feature-title">Auto-Discovery</div>
+        <p class="feature-desc">No IP address typing needed. Three simultaneous discovery methods — UDP broadcast, LocalSend multicast, TCP subnet scan — find your PC in seconds.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ────────────────────────────────────────── -->
+<section id="how">
+  <div class="container">
+    <div class="section-label reveal">HOW IT WORKS</div>
+    <h2 class="section-title reveal">Up and running<br>in 60 seconds</h2>
+
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">1</div>
+        <div class="step-title">Install on PC</div>
+        <p class="step-desc">Download and run the Controllax .exe on your Windows PC. No installation wizard — just run it.</p>
+      </div>
+      <div class="step reveal" style="transition-delay:0.1s">
+        <div class="step-num">2</div>
+        <div class="step-title">Start Server</div>
+        <p class="step-desc">Click ▶ Start Server in the sidebar. The app broadcasts on your local network automatically.</p>
+      </div>
+      <div class="step reveal" style="transition-delay:0.2s">
+        <div class="step-num">3</div>
+        <div class="step-title">Open App</div>
+        <p class="step-desc">Open Controllax on your Android phone. Both devices must be on the same Wi-Fi network.</p>
+      </div>
+      <div class="step reveal" style="transition-delay:0.3s">
+        <div class="step-num">4</div>
+        <div class="step-title">Auto-Connect</div>
+        <p class="step-desc">Tap Auto-Discover. Your PC appears instantly. Tap connect — you're in control.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── DOWNLOAD ───────────────────────────────────────────── -->
+<section id="download">
+  <div class="container">
+    <div class="section-label reveal">DOWNLOAD</div>
+    <h2 class="section-title reveal">Get Controllax</h2>
+    <p class="section-sub reveal">Free forever. No accounts. No subscriptions. Just download and run.</p>
+
+    <div class="download-grid">
+
+      <!-- APK -->
+      <div class="download-card apk reveal">
+        <div class="dl-platform">
+          <div class="dl-icon">🤖</div>
+          <div>
+            <div class="dl-platform-name">Android APK</div>
+            <div class="dl-platform-sub">For Android 7.0 and above</div>
+          </div>
+        </div>
+        <div class="dl-specs">
+          <div class="dl-spec">Android 7.0+ (Nougat)</div>
+          <div class="dl-spec">~47 MB download size</div>
+          <div class="dl-spec">No Google Play required</div>
+          <div class="dl-spec">Allow "Install from unknown sources"</div>
+        </div>
+        <!-- Replace href with real APK download link -->
+        <a href="#" class="dl-btn" onclick="alert('APK download link — replace with your real link!')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          DOWNLOAD APK
+        </a>
+        <div class="dl-version">v1.0.0 &nbsp;·&nbsp; Latest release</div>
+      </div>
+
+      <!-- EXE -->
+      <div class="download-card exe reveal" style="transition-delay:0.1s">
+        <div class="dl-platform">
+          <div class="dl-icon">🪟</div>
+          <div>
+            <div class="dl-platform-name">Windows EXE</div>
+            <div class="dl-platform-sub">For Windows 10 / 11</div>
+          </div>
+        </div>
+        <div class="dl-specs">
+          <div class="dl-spec">Windows 10 or Windows 11</div>
+          <div class="dl-spec">~28 MB download size</div>
+          <div class="dl-spec">No installation needed — just run</div>
+          <div class="dl-spec">Python 3.10+ bundled</div>
+        </div>
+        <!-- Replace href with real EXE download link -->
+        <a href="#" class="dl-btn" onclick="alert('EXE download link — replace with your real link!')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          DOWNLOAD FOR PC
+        </a>
+        <div class="dl-version">v19.0 &nbsp;·&nbsp; Latest release</div>
+      </div>
+
+    </div>
+
+    <!-- Note -->
+    <div class="reveal" style="margin-top:24px;padding:20px 24px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.18);border-radius:12px;display:flex;gap:12px;align-items:flex-start;">
+      <span style="font-size:18px;flex-shrink:0">⚠️</span>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#fbbf24;margin-bottom:4px;font-family:'Syne',sans-serif;">Installation Note</div>
+        <div style="font-size:12px;color:#94a3b8;line-height:1.7;">
+          <strong style="color:#f1f5f9">APK:</strong> Enable "Install from unknown sources" in Android Settings → Security.<br>
+          <strong style="color:#f1f5f9">EXE:</strong> Windows Defender may flag the file — click "More info" → "Run anyway". The app is safe and open for inspection.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ─────────────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">CONTROLLAX</div>
+      <div class="footer-credit">
+        Developed by <span>Nadeesh</span>
+        &nbsp;·&nbsp;
+        <span style="color:var(--sub);font-weight:400">Free &amp; open to use</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how">How It Works</a></li>
+        <li><a href="#download">Download</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ── Custom cursor ────────────────────────────────────────
+  const cur  = document.getElementById('cursor');
+  const ring = document.getElementById('cursor-ring');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+  (function animCursor() {
+    rx += (mx - rx) * 0.15;
+    ry += (my - ry) * 0.15;
+    cur.style.transform  = `translate(${mx - 5}px, ${my - 5}px)`;
+    ring.style.transform = `translate(${rx - 18}px, ${ry - 18}px)`;
+    requestAnimationFrame(animCursor);
+  })();
+
+  document.querySelectorAll('a, button, .btn, .dl-btn, .feature-card').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      ring.style.width  = '52px';
+      ring.style.height = '52px';
+      ring.style.opacity = '0.6';
+    });
+    el.addEventListener('mouseleave', () => {
+      ring.style.width  = '36px';
+      ring.style.height = '36px';
+      ring.style.opacity = '0.4';
+    });
+  });
+
+  // ── Scroll reveal ────────────────────────────────────────
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'),
+          parseFloat(e.target.style.transitionDelay || 0) * 1000);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // ── Nav background on scroll ─────────────────────────────
+  const nav = document.querySelector('nav');
+  window.addEventListener('scroll', () => {
+    nav.style.background = window.scrollY > 40
+      ? 'rgba(6,6,10,0.92)'
+      : 'rgba(6,6,10,0.7)';
+  });
+
+  // ── Stagger feature cards ────────────────────────────────
+  document.querySelectorAll('.feature-card.reveal').forEach((card, i) => {
+    card.style.transitionDelay = `${i * 0.06}s`;
+  });
+</script>
+</body>
+</html>
